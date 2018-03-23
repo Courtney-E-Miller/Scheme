@@ -72,11 +72,19 @@
 
 ;end - ends the game if snek hits a wall
 (define (end ws)
-  (boolean=? (or (= (snek-x ws) width) (= (snek-x ws) 0) (= (snek-y ws) height) (= (snek-y ws) 0)) #true))
+  (boolean=? (or (= (snek-x ws) width) (= (snek-x ws) 0) (= (snek-y ws) height) (= (snek-y ws) 0) (selfCrash ws 0)) #true))
+
+;selfCrash - helper method for end(), takes in a ws and a counter (that always starts at 0) and returns a boolean.  It returns #true if the snake's head has colided with
+;a segment of its tail, and #false if it has not
+(define (selfCrash ws n)
+  (cond [(empty? (snek-LoS  ws)) #false]
+        [(equal? n 0) (selfCrash (make-snek (snek-x ws) (snek-y ws) (snek-direction ws) (rest (snek-LoS ws))) (add1 n))]
+        [(and (equal? (snek-x ws) (segment-x (first (snek-LoS ws)))) (equal? (snek-y ws) (segment-y (first (snek-LoS ws))))) #true]
+        [else (selfCrash (make-snek (snek-x ws) (snek-y ws) (snek-direction ws) (rest (snek-LoS ws))) (add1 n))]))
 
 ;endpic - displays final image with text "worm hit border" in lower left corner
 (define (endPic ws)
-  (place-image (text "Worm Hit Border" 24 "black") 400 400 (render ws)))
+  (place-image (text (cond [(equal? (selfCrash ws 0) #true) "Worm Collided With Itself"] [else "Worm Hit Border"]) 24 "black") 400 400 (render ws)))
 
   ;attempted altered version to increase efficiency 
    ; (place-image (text "Worm Hit Border" 24 "black") 400 400 (place-image (circle diameter "solid" "red") (snek-x ws) (snek-y ws) BG)))
@@ -90,6 +98,7 @@
     [stop-when end endPic]))
 
 ;Launches program, starts with a snek at 250, 250 moving to the right 
-(main (make-snek 250 250 "R" (cons (make-segment 250 250) (cons (make-segment (- 250  (* diameter 2)) 250) (cons (make-segment (- 250 (* diameter 4)) 250) '())))))
+(main (make-snek 250 250 "R" (cons (make-segment 250 250) (cons (make-segment (- 250  (* diameter 2)) 250) (cons (make-segment (- 250 (* diameter 4)) 250) (cons (make-segment (- 250 (* diameter 6)) 250) (cons (make-segment (- 250 (* diameter 8)) 250) (cons (make-segment (- 250 (* diameter 10)) 250) '()))))))))
+;(main (make-snek 250 250 "R" (cons (make-segment 250 250)'())))
   
 
