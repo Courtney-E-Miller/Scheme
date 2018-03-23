@@ -10,10 +10,10 @@
 (define BG (empty-scene width height))
 
 ;creates snek data structure
-;(define-struct snek[x y direction LoS])
+(define-struct snek[x y direction LoS])
 
 ;creates segment data structure
-(define-struct segment[x y direction])
+(define-struct segment[x y])
 
 ;x and y are numbers that represent the current x and y coordinates of the snek
 
@@ -27,7 +27,7 @@
 ; - the empty list '()
 ; - (cons segment LoS)
 
-;The world state is the list of segments (LoS)
+;The world state is a snek
 
 ;tock - takes in a world state, and moves the circle diameter distance, in snek-direction
 ;Examples:
@@ -37,35 +37,42 @@
 ;(cons (segment 200 200 U) '()) -> (cons (segment 200 190 U) '())
 ;ws -> ws
 
-;updated to account for new LoS ws, now has nested cond statement.
+;updated to account for corrected snek ws
 (define (tock ws)
-  (cond [(empty? ws) '()]      
-  [else (cond [(string=? (segment-direction (first ws)) "R") (cons (make-segment (+ (segment-x (first ws)) 10) (segment-y (first ws)) "R") (tock (rest ws)))]
-        [(string=? (segment-direction (first ws)) "L") (cons (make-segment (- (segment-x (first ws)) 10) (segment-y (first ws)) "L") (tock (rest ws)))]
-        [(string=? (segment-direction (first ws)) "U") (cons (make-segment (segment-x (first ws)) (- (segment-y (first ws)) 10) "U") (tock (rest ws)))]
-        [(string=? (segment-direction (first ws)) "D") (cons (make-segment (segment-x (first ws)) (+ (segment-y (first ws)) 10) "D") (tock (rest ws)))]
-        [else (cons (first ws) (tock (rest ws)))])]))
+  (cond [(string=? (snek-direction ws) "R") (make-snek (+ (snek-x ws) 10) (snek-y ws) "R" (updateLoS ws (snek-LoS ws) (length (snek-LoS ws))))]
+       [(string=? (snek-direction ws) "L") (make-snek (- (snek-x ws) 10) (snek-y ws) "L" (updateLoS ws (snek-LoS ws) (length (snek-LoS ws))))]
+       [(string=? (snek-direction ws) "U") (make-snek (snek-x ws) (- (snek-y ws) 10) "U" (updateLoS ws (snek-LoS ws) (length (snek-LoS ws))))]
+       [(string=? (snek-direction ws) "D") (make-snek (snek-x ws) (+ (snek-y ws) 10) "D" (updateLoS ws (snek-LoS ws) (length (snek-LoS ws))))]
+       [else ws]))
 ;even though technically else should never happen since theres always a last pressed key
 
+;updateLoS - helper function for update, takes in a ws, LoS (from ws), and a number representing the length of the LoS from the ws which will be used as a counter.  It returns the updated LoS
+;with a new segment added to the front based on the current ws, and the last segment removed.
+(define (updateLoS ws LoS n)
+  (cond [(equal? n 0) '()]
+        [(equal? n (length LoS)) (cons (cond [(string=? (snek-direction ws) "R") (make-segment (+ (snek-x ws) 10) (snek-y ws))]
+                                              [(string=? (snek-direction ws) "L") (make-segment (- (snek-x ws) 10) (snek-y ws))]
+                                              [(string=? (snek-direction ws) "U") (make-segment (snek-x ws) (- (snek-y ws) 10))]
+                                              [(string=? (snek-direction ws) "D") (make-segment (snek-x ws) (+ (snek-y ws) 10))]) (updateLoS ws LoS (sub1 n)))]
+        [else (cons (first LoS) (updateLoS ws (rest LoS) (sub1 n)))]))
+        
 ;render - takes in a world state and produces an image
-  ;UNSURE OF BASE CASE or this updated function in general
+  ;updated to accounted for correcred snek ws
 (define (render ws)
-  (cond [(= (length ws) 1) (place-image (circle diameter "outline" "red") (segment-x (first ws)) (segment-y (first ws)) BG)]
-        [else (place-image (circle diameter "outline" "red") (segment-x (first ws)) (segment-y (first ws)) (render (rest ws)))]))
+  (cond [(= (length (snek-LoS ws)) 1) (place-image (circle diameter "solid" "red") (segment-x (first (snek-LoS ws))) (segment-y (first (snek-LoS ws))) BG)]
+        [else (place-image (circle diameter "solid" "red") (segment-x (first (snek-LoS ws))) (segment-y (first (snek-LoS ws))) (render (make-snek (snek-x ws) (snek-y ws) (snek-direction ws) (rest (snek-LoS ws)))))]))
 
-;press - takes in a world state and a key and returns an updated world state
-  ;updated to account for new LoS ws, now has nested cond statement.
-(define (press ws ke)
-  (cond [(empty? ws) '()]
-        [else 
-  (cond [(key=? ke "left") (cons (make-segment (segment-x (first ws)) (segment-y (first ws)) "L") (press (rest ws) ke))]
-        [(key=? ke "right") (cons (make-segment (segment-x (first ws)) (segment-y (first ws)) "R") (press (rest ws) ke))]
-        [(key=? ke "up") (cons (make-segment (segment-x (first ws)) (segment-y (first ws)) "U") (press (rest ws) ke))]
-        [(key=? ke "down") (cons (make-segment (segment-x (first ws)) (segment-y (first ws)) "D") (press (rest ws) ke))])]))
+;press - takes in a ws and a key and returns an updated ws
+  ;updated to account for corrected snek ws
+(define (press ws ke) 
+  (cond [(key=? ke "left") (make-snek (snek-x ws) (snek-y ws) "L" (snek-LoS ws))]
+        [(key=? ke "right") (make-snek (snek-x ws) (snek-y ws) "R" (snek-LoS ws))]
+        [(key=? ke "up") (make-snek (snek-x ws) (snek-y ws) "U" (snek-LoS ws))]
+        [(key=? ke "down") (make-snek (snek-x ws) (snek-y ws) "D" (snek-LoS ws))]))
 
 ;end - ends the game if snek hits a wall
 (define (end ws)
-  (boolean=? (or (= (segment-x (first ws)) width) (= (segment-x (first ws)) 0) (= (segment-y (first ws)) height) (= (segment-y (first ws)) 0)) #true))
+  (boolean=? (or (= (snek-x ws) width) (= (snek-x ws) 0) (= (snek-y ws) height) (= (snek-y ws) 0)) #true))
 
 ;endpic - displays final image with text "worm hit border" in lower left corner
 (define (endPic ws)
@@ -83,6 +90,6 @@
     [stop-when end endPic]))
 
 ;Launches program, starts with a snek at 250, 250 moving to the right 
-(main (cons (make-segment 250 250 "R") (cons (make-segment (- 250  (* diameter 2)) 250 "R") (cons (make-segment (- 250 (* diameter 4)) 250 "R") '()))))
+(main (make-snek 250 250 "R" (cons (make-segment 250 250) (cons (make-segment (- 250  (* diameter 2)) 250) (cons (make-segment (- 250 (* diameter 4)) 250) '())))))
   
 
